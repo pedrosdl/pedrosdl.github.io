@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Exemplo de Streaming com MSE e Blob</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; }
+        video { border: 2px solid #ccc; max-width: 800px; }
+    </style>
+</head>
+<body>
+    <h1>Exemplo de Streaming de Vídeo com MSE e `Blob`</h1>
+    <p>Este exemplo carrega e reproduz o vídeo de 3 partes usando `Media Source Extensions` (MSE).</p>
+    <video id="videoPlayer" controls autoplay></video>
+
+    <script>
+        // Verifica se o navegador suporta Media Source Extensions
+        if ('MediaSource' in window && window.MediaSource.isTypeSupported('video/mp4; codecs="avc1.42E01E, mp4a.40.2"')) {
+            const video = document.getElementById('videoPlayer');
+            const mediaSource = new MediaSource();
+            video.src = URL.createObjectURL(mediaSource);
+
+            mediaSource.addEventListener('sourceopen', () => {
+                console.log('MediaSource está aberto. Criando SourceBuffer...');
+
+                // Cria um SourceBuffer. O tipo e codecs precisam ser corretos.
+                const sourceBuffer = mediaSource.addSourceBuffer('video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
+                const videoParts = ['parte-1.bin', 'parte-2.bin', 'parte-3.bin'];
+                let partIndex = 0;
+
+                // Função para buscar e anexar a próxima parte do vídeo.
+                function loadNextPart() {
+                    if (partIndex < videoParts.length) {
+                        const part = videoParts[partIndex];
+                        console.log(`Buscando parte ${part}...`);
+
+                        fetch(part)
+                            .then(response => response.arrayBuffer())
+                            .then(arrayBuffer => {
+                                console.log(`Anexando dados da parte ${part}...`);
+                                sourceBuffer.appendBuffer(arrayBuffer);
+                                partIndex++;
+                            })
+                            .catch(error => {
+                                console.error(`Erro ao carregar a parte ${part}:`, error);
+                            });
+                    } else {
+                        // Todas as partes foram carregadas, sinaliza o fim do streaming
+                        if (!mediaSource.isStreamEnded) {
+                            mediaSource.endOfStream();
+                            console.log('Todas as partes foram carregadas. Fim do streaming.');
+                        }
+                    }
+                }
+
+                // Aguarda o 'updateend' do SourceBuffer antes de carregar a próxima parte
+                sourceBuffer.addEventListener('updateend', () => {
+                    console.log('Anexação de dados concluída. Carregando próxima parte...');
+                    loadNextPart();
+                });
+
+                // Inicia o carregamento da primeira parte
+                loadNextPart();
+            }, { once: true });
+
+        } else {
+            // Mensagem de erro caso o navegador não suporte MSE
+            console.error("Seu navegador não suporta Media Source Extensions para este tipo de vídeo.");
+            const video = document.getElementById('videoPlayer');
+            video.innerHTML = "<p>Seu navegador não suporta a tecnologia necessária para este exemplo.</p>";
+        }
+    </script>
+</body>
+</html>
