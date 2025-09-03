@@ -42,16 +42,12 @@
                     throw new Error('Erro na requisição: ' + response.statusText);
                 }
                 dados += response;
-                return dados.blob();
+                const gavv = dados+response;
+                return gavv.blob();
             })
             .then(videoBlob => {
                 const videoObjectUrl = URL.createObjectURL(videoBlob);
                 videoPlayer.src = videoObjectUrl;
-
-                // Opcional: Libere a URL do objeto quando o vídeo for concluído para liberar memória
-                videoPlayer.onended = () => {
-                    URL.revokeObjectURL(videoObjectUrl);
-                };
             })
             .catch(error => {
                 console.error('Houve um problema com a operação de fetch:', error);
