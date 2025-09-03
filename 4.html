@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reprodutor de Vídeo com Fetch API</title>
+</head>
+<body>
+
+    <h1>Reprodutor de Vídeo (Fetch API)</h1>
+
+    <video id="videoPlayer" width="640" height="360" controls>
+        Seu navegador não suporta a tag de vídeo.
+    </video>
+
+    <script>
+        const videoPlayer = document.getElementById('videoPlayer');
+        const videoUrl = 'parte-1.bin';
+
+        fetch(videoUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro na requisição: ' + response.statusText);
+                }
+                return response.blob();
+            })
+            .then(videoBlob => {
+                const videoObjectUrl = URL.createObjectURL(videoBlob);
+                videoPlayer.src = videoObjectUrl;
+
+                // Opcional: Libere a URL do objeto quando o vídeo for concluído para liberar memória
+                videoPlayer.onended = () => {
+                    URL.revokeObjectURL(videoObjectUrl);
+                };
+            })
+            .catch(error => {
+                console.error('Houve um problema com a operação de fetch:', error);
+                alert('Não foi possível carregar o vídeo.');
+            });
+    </script>
+
+</body>
+</html>
