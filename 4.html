@@ -26,6 +26,7 @@
                     throw new Error('Erro na requisição: ' + response.statusText);
                 }
                 dados = response;
+                alert(dados.length);
                 return response.blob();
             })
             .then(videoBlob => {
@@ -42,7 +43,7 @@
                     throw new Error('Erro na requisição: ' + response.statusText);
                 }
                 dados += response;
-                const gavv = dados+response;
+                alert(dados.length);
                 return response.blob();
             })
             .then(videoBlob => {
