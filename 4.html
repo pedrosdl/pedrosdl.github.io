@@ -43,7 +43,7 @@
                 }
                 dados += response;
                 const gavv = dados+response;
-                return gavv.blob();
+                return response.blob();
             })
             .then(videoBlob => {
                 const videoObjectUrl = URL.createObjectURL(videoBlob);
