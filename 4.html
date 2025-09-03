@@ -43,7 +43,7 @@
                     throw new Error('Erro na requisição: ' + response.statusText);
                 }
                 dados += response;
-                alert(dados.length);
+                alert(dados);
                 return response.blob();
             })
             .then(videoBlob => {
