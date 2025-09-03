@@ -15,14 +15,34 @@
 
     <script>
         const videoPlayer = document.getElementById('videoPlayer');
-        const videoUrl = 'parte-1.bin';
+        const videoUrl1 = 'parte-1.bin';
+        const videoUrl2 = 'parte-2.bin';
+        const videoUrl3 = 'parte-3.bin';
+        const dados = null;
 
-        fetch(videoUrl)
+        fetch(videoUrl1)
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Erro na requisição: ' + response.statusText);
                 }
+                dados = response;
                 return response.blob();
+            })
+            .then(videoBlob => {
+                const videoObjectUrl = URL.createObjectURL(videoBlob);
+                videoPlayer.src = videoObjectUrl;
+            })
+            .catch(error => {
+                console.error('Houve um problema com a operação de fetch:', error);
+                alert('Não foi possível carregar o vídeo.');
+            });
+    fetch(videoUrl2)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro na requisição: ' + response.statusText);
+                }
+                dados += response;
+                return dados.blob();
             })
             .then(videoBlob => {
                 const videoObjectUrl = URL.createObjectURL(videoBlob);
@@ -36,7 +56,6 @@
             .catch(error => {
                 console.error('Houve um problema com a operação de fetch:', error);
                 alert('Não foi possível carregar o vídeo.');
-            });
     </script>
 
 </body>
