@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Exemplo de Streaming com MSE e Blob</title>
+    <style>
+        body { 
+            font-family: sans-serif; 
+            text-align: center; 
+            padding: 20px;
+        }
+        video { 
+            border: 2px solid #ccc; 
+            max-width: 800px; 
+            width: 100%;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f0f0f0;
+        }
+        .error {
+            background-color: #ffe6e6;
+            color: #d00;
+        }
+        .success {
+            background-color: #e6ffe6;
+            color: #0a0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Exemplo de Streaming de Vídeo com MSE e Blob</h1>
+    <p>Este exemplo carrega e reproduz o vídeo de 3 partes usando Media Source Extensions (MSE).</p>
+    <div id="status" class="status">Verificando suporte do navegador...</div>
+    <video id="videoPlayer" controls></video>
+
+    <script>
+        const video = document.getElementById('videoPlayer');
+        const statusDiv = document.getElementById('status');
+
+        function updateStatus(message, type = 'info') {
+            console.log(message);
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+        }
+
+        // Verifica se o navegador suporta Media Source Extensions
+        if (!('MediaSource' in window)) {
+            updateStatus('Seu navegador não suporta Media Source Extensions.', 'error');
+        } else if (!MediaSource.isTypeSupported('video/mp4; codecs="avc1.42E01E, mp4a.40.2"')) {
+            updateStatus('Seu navegador não suporta o codec de vídeo necessário.', 'error');
+        } else {
+            updateStatus('Iniciando streaming de vídeo...', 'info');
+            
+            const mediaSource = new MediaSource();
+            video.src = URL.createObjectURL(mediaSource);
+            
+            mediaSource.addEventListener('sourceopen', function() {
+                updateStatus('MediaSource aberto. Criando SourceBuffer...', 'info');
+                
+                let sourceBuffer;
+                try {
+                    sourceBuffer = mediaSource.addSourceBuffer('video/mp4; codecs="avc1.42E01E, mp4a.40.2"');
+                } catch (error) {
+                    updateStatus(`Erro ao criar SourceBuffer: ${error.message}`, 'error');
+                    return;
+                }
+                
+                const videoParts = ['parte-1.bin', 'parte-2.bin', 'parte-3.bin'];
+                let partIndex = 0;
+                let isLoading = false;
+
+                // Função para buscar e anexar a próxima parte do vídeo
+                function loadNextPart() {
+                    // Evita carregar múltiplas partes simultaneamente
+                    if (isLoading || sourceBuffer.updating) {
+                        return;
+                    }
+
+                    if (partIndex < videoParts.length) {
+                        const part = videoParts[partIndex];
+                        isLoading = true;
+                        
+                        updateStatus(`Carregando parte ${partIndex + 1}/${videoParts.length}: ${part}...`, 'info');
+                        
+                        fetch(part)
+                            .then(response => {
+                                if (!response.ok) {
+                                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                                }
+                                return response.arrayBuffer();
+                            })
+                            .then(arrayBuffer => {
+                                if (arrayBuffer.byteLength === 0) {
+                                    throw new Error('Arquivo vazio recebido');
+                                }
+                                
+                                // Verifica se o MediaSource ainda está aberto
+                                if (mediaSource.readyState === 'open') {
+                                    updateStatus(`Anexando dados da parte ${part}...`, 'info');
+                                    sourceBuffer.appendBuffer(arrayBuffer);
+                                } else {
+                                    throw new Error('MediaSource foi fechado inesperadamente');
+                                }
+                            })
+                            .catch(error => {
+                                isLoading = false;
+                                updateStatus(`Erro ao carregar ${part}: ${error.message}`, 'error');
+                                console.error(`Erro ao carregar a parte ${part}:`, error);
+                                
+                                // Tenta prosseguir para a próxima parte em caso de erro
+                                partIndex++;
+                                setTimeout(loadNextPart, 1000);
+                            });
+                    } else {
+                        // Todas as partes foram processadas
+                        if (mediaSource.readyState === 'open') {
+                            try {
+                                mediaSource.endOfStream();
+                                updateStatus('Streaming concluído com sucesso!', 'success');
+                            } catch (error) {
+                                updateStatus(`Erro ao finalizar stream: ${error.message}`, 'error');
+                            }
+                        }
+                    }
+                }
+
+                // Event listeners do SourceBuffer
+                sourceBuffer.addEventListener('updatestart', () => {
+                    console.log('Iniciando atualização do buffer...');
+                });
+
+                sourceBuffer.addEventListener('updateend', () => {
+                    console.log('Atualização do buffer concluída.');
+                    isLoading = false;
+                    partIndex++;
+                    
+                    // Pequeno delay antes de carregar a próxima parte
+                    setTimeout(loadNextPart, 100);
+                });
+
+                sourceBuffer.addEventListener('error', (event) => {
+                    isLoading = false;
+                    updateStatus('Erro no SourceBuffer durante a atualização', 'error');
+                    console.error('Erro no SourceBuffer:', event);
+                });
+
+                // Event listeners do MediaSource
+                mediaSource.addEventListener('error', (event) => {
+                    updateStatus('Erro no MediaSource', 'error');
+                    console.error('Erro no MediaSource:', event);
+                });
+
+                // Event listeners do vídeo
+                video.addEventListener('error', (event) => {
+                    updateStatus(`Erro no elemento de vídeo: ${video.error?.message || 'Erro desconhecido'}`, 'error');
+                    console.error('Erro no vídeo:', event);
+                });
+
+                video.addEventListener('loadstart', () => {
+                    console.log('Vídeo começou a carregar');
+                });
+
+                video.addEventListener('canplay', () => {
+                    console.log('Vídeo pode começar a reproduzir');
+                });
+
+                // Inicia o carregamento da primeira parte
+                loadNextPart();
+                
+            }, { once: true });
+
+            // Cleanup quando a página for fechada
+            window.addEventListener('beforeunload', () => {
+                if (video.src) {
+                    URL.revokeObjectURL(video.src);
+                }
+            });
+        }
+    </script>
+</body>
+</html>
