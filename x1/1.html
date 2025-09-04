@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reprodutor de Vídeo com Transição</title>
+</head>
+<body>
+
+    <video id="videoPlayer" width="640" height="360" controls autoplay>
+        Seu navegador não suporta a tag de vídeo.
+    </video>
+    
+    <script>
+        const videoPlayer = document.getElementById('videoPlayer');
+
+        let parts = 1;
+        let totalParts = 3;
+        let downloadedData = [];
+        let currentTime = 0;
+
+        // Função principal para baixar e reproduzir as partes
+        function downloadAndPlayNextPart() {
+            if (parts > totalParts) {
+                console.log("Todas as partes baixadas. Fim do vídeo.");
+                return;
+            }
+
+            console.log(`Baixando parte ${parts}...`);
+
+            // Salva a posição atual do vídeo antes de pausar
+            currentTime = videoPlayer.currentTime;
+            videoPlayer.pause();
+            
+            fetch(`https://pedrosdl.github.io/parte-${parts}.bin`)
+                .then(response => response.arrayBuffer())
+                .then(arrayBuffer => {
+                    downloadedData.push(arrayBuffer); // Adiciona o buffer ao array
+                    
+                    // Junta todos os dados baixados até agora
+                    const videoBlob = new Blob(downloadedData, {
+                        type: "video/mp4"
+                    });
+                    const videoObjectUrl = URL.createObjectURL(videoBlob);
+                    
+                    // Atualiza a URL e tenta pular para o tempo salvo
+                    videoPlayer.src = videoObjectUrl;
+                    videoPlayer.currentTime = currentTime;
+                    
+                    videoPlayer.play();
+                    parts++;
+                })
+                .catch(error => {
+                    console.error("Erro ao baixar a parte:", error);
+                });
+        }
+
+        // Adiciona um evento que vai chamar a próxima parte quando o vídeo estiver perto do fim da parte atual
+        videoPlayer.addEventListener('timeupdate', () => {
+            // Se o tempo restante for menor que 2 segundos
+            if (videoPlayer.duration - videoPlayer.currentTime < 2) {
+                if (parts <= totalParts) {
+                    downloadAndPlayNextPart();
+                }
+            }
+        });
+
+        // Inicia o processo com a primeira parte
+        downloadAndPlayNextPart();
+
+    </script>
+    
+</body>
+</html>
