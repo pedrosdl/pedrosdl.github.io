@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reprodutor de Vídeo em Partes</title>
+</head>
+<body>
+
+    <video id="videoPlayer" width="640" height="360" controls>
+        Seu navegador não suporta a tag de vídeo.
+    </video>
+    
+    <script>
+        const videoPlayer = document.getElementById("videoPlayer");
+        let currentPart = 1;
+        let totalParts = 3; // Supondo que o vídeo tem 3 partes
+        let totalDownloadedSize = 0;
+        let downloadedParts = [];
+
+        // Inicia o download da primeira parte
+        function startDownload() {
+            downloadNextPart();
+        }
+
+        // Função principal que baixa cada parte do vídeo
+        function downloadNextPart() {
+            if (currentPart > totalParts) {
+                console.log("Download de todas as partes concluído.");
+                joinAndPlayVideo();
+                return;
+            }
+
+            console.log(`Baixando parte ${currentPart}...`);
+            fetch(`https://pedrosdl.github.io/parte-${currentPart}.bin`)
+                .then(response => response.arrayBuffer())
+                .then(arrayBuffer => {
+                    downloadedParts.push(arrayBuffer);
+                    totalDownloadedSize += arrayBuffer.byteLength;
+                    console.log(`Parte ${currentPart} baixada. Total baixado: ${(totalDownloadedSize / 1024 / 1024).toFixed(2)} MB`);
+                    currentPart++;
+                    downloadNextPart(); // Chama a próxima parte recursivamente
+                })
+                .catch(error => {
+                    console.error("Erro ao baixar a parte:", error);
+                });
+        }
+
+        // Função que junta todas as partes e reproduz o vídeo
+        function joinAndPlayVideo() {
+            if (downloadedParts.length === 0) {
+                console.error("Nenhuma parte do vídeo foi baixada.");
+                return;
+            }
+
+            // Cria um Blob a partir do array de buffers de dados
+            const videoBlob = new Blob(downloadedParts, {
+                type: "video/mp4"
+            });
+            const videoObjectUrl = URL.createObjectURL(videoBlob);
+            videoPlayer.src = videoObjectUrl;
+
+            console.log("Vídeo carregado com sucesso!");
+
+            // Limpa o array de partes para liberar a memória
+            downloadedParts = [];
+            // Opcional: Limpa a URL do objeto quando o vídeo terminar de ser reproduzido para liberar a memória
+            videoPlayer.addEventListener('ended', () => {
+                URL.revokeObjectURL(videoObjectUrl);
+                console.log("URL do vídeo revogada, memória liberada.");
+            });
+        }
+
+        // Inicia o processo de download quando a página carrega
+        window.onload = startDownload;
+    </script>
+    
+</body>
+</html>
