@@ -1,10 +1,14 @@
-<b>TEXY</b>
+<b>TEXY v2</b>
 <script>
 const linkTag = document.createElement("a")
    // Nome da extensão e arquivo que irá ser baixado.
    linkTag.download = "blob.txt"
    
-   const myCustomBlob = new Blob(["Olá, Dev!"],{
+   let myCustomBlob = new Blob(["Olá, Dev!"],{
+    type:"text/plain"
+   })
+   
+   myCustomBlob = new Blob(["Oládddd, Dev!"],{
     type:"text/plain"
    })
 
