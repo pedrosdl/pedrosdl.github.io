@@ -1,0 +1,19 @@
+<script>
+const linkTag = document.createElement("a")
+   // Nome da extensão e arquivo que irá ser baixado.
+   linkTag.download = "blob.txt"
+   
+   const myCustomBlob = new Blob(["Olá, Dev!"],{
+    type:"text/plain"
+   })
+
+    const url = URL.createObjectURL(myCustomBlob)
+
+    linkTag.href = url
+    // Baixa automaticamente o arquivo 
+    linkTag.click()
+
+    //Limpar referência do blob na memória do browser, pois como blob
+    //é criado no documento ele irá ser imutável e só irá ser limpado da memória quando o documento for desfeito ou quando for solicitado a sua remoção da memória.
+    URL.revokeObjectURL(url)
+</script>
