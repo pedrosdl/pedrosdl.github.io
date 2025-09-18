@@ -34,8 +34,42 @@
     let isFetching = false; // Flag para evitar múltiplas chamadas simultâneas
 
     function descriptografar(arrayBuffer) {
-        const dadosBin = new Uint8Array(arrayBuffer);
+		const startDelimiter = "<blockquote>";
+		const endDelimiter = "</blockquote>";
+        const bytes = new Uint8Array(arrayBuffer);
         let saida = new Uint8Array(dadosBin.length);
+		const decoder = new TextDecoder();
+
+    const startDelimiterBytes = new TextEncoder().encode(startDelimiter);
+    const endDelimiterBytes = new TextEncoder().encode(endDelimiter);
+
+    let startIndex = -1;
+    let endIndex = -1;
+
+    // Converte os bytes para string para facilitar a busca dos delimitadores
+    const textData = decoder.decode(bytes);
+
+    // Encontra o índice inicial do primeiro delimitador
+    const startDelimiterIndex = textData.indexOf(startDelimiter);
+    if (startDelimiterIndex !== -1) {
+      startIndex = startDelimiterIndex + startDelimiter.length;
+    } else {
+      console.warn("Delimitador de início não encontrado.");
+      return null;
+    }
+
+    // Encontra o índice inicial do segundo delimitador, a partir do primeiro
+    const endDelimiterIndex = textData.indexOf(endDelimiter, startIndex);
+    if (endDelimiterIndex !== -1) {
+      endIndex = endDelimiterIndex;
+    } else {
+      console.warn("Delimitador de fim não encontrado.");
+      return null;
+    }
+
+    // Retorna a fatia dos bytes entre os delimitadores
+    const dadosBin= bytes.slice(startIndex, endIndex);
+
         const tamanhoPedaco = 200;
         let offset = 0;
         for (let i = 0; i < dadosBin.length; i += tamanhoPedaco) {
