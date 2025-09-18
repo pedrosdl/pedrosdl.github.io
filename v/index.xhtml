@@ -11,7 +11,7 @@
 
     <video id="video" width="640" controls="controls"></video>
     <br />
-    <button id="loadButton">[ Carregar ]</button>
+    <button id="loadButton">[- Carregar -]</button>
     <p>Status: <span id="status">Aguardando...</span></p>
     
     <script type="text/javascript">
@@ -30,8 +30,8 @@
     let sourceBuffer = null;
     let segmentIndex = 0;
     
-    const bufferThreshold = 2;
-    let isFetching = false; // Flag para evitar múltiplas chamadas simultâneas
+    const bufferThreshold = 12;
+    let isFetching = true; // Flag para evitar múltiplas chamadas simultâneas
 
     function descriptografar(arrayBuffer) {
 		const startDelimiter = "<blockquote>";
