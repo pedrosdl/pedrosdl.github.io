@@ -136,7 +136,7 @@
             return;
         }
         
-        isFetching = false; // Define a flag para evitar outras chamadas
+        isFetching = true; // Define a flag para evitar outras chamadas
         
         const segmentUrl = videoSegments[segmentIndex];
         statusElement.textContent = `Carregando segmento ${segmentIndex + 1}/${videoSegments.length}: ${segmentUrl}...`;
