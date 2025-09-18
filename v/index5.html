@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download de Arquivos Binários</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            flex-direction: column;
+            text-align: center;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007BFF;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #status {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #333;
+        }
+        #downloadLink {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #007BFF;
+            text-decoration: none;
+            display: none; /* Inicia oculto */
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Baixar e Inverter Arquivos Binários</h1>
+    <p>Clique no botão para baixar os arquivos "ddssk_0.bin" e "ddssk_1.bin", inverter os bytes, uni-los e gerar um link para download.</p>
+
+    <button id="downloadBtn">Iniciar Download</button>
+    <p id="status"></p>
+    <a id="downloadLink" href="#" download="ddssk_merged.bin">Clique para Baixar o Arquivo Final</a>
+
+    <script>
+        document.getElementById('downloadBtn').addEventListener('click', async () => {
+            const status = document.getElementById('status');
+            const downloadLink = document.getElementById('downloadLink');
+
+            // Oculta o link de download e limpa o status
+            downloadLink.style.display = 'none';
+            downloadLink.href = '#';
+            status.textContent = 'Iniciando download...';
+
+            // Função para inverter os bytes de um ArrayBuffer
+            const invertBytes = (buffer) => {
+                const uint8Array = new Uint8Array(buffer);
+                const invertedArray = new Uint8Array(uint8Array.length);
+                for (let i = 0; i < uint8Array.length; i++) {
+                    invertedArray[i] = uint8Array[uint8Array.length - 1 - i];
+                }
+                return invertedArray.buffer;
+            };
+          function descrip(arrayBuffer) {
+		const startDelimiter = "<blockquote>";
+		const endDelimiter = "</blockquote>";
+        const bytes = new Uint8Array(arrayBuffer);
+		const decoder = new TextDecoder();
+
+    const startDelimiterBytes = new TextEncoder().encode(startDelimiter);
+    const endDelimiterBytes = new TextEncoder().encode(endDelimiter);
+
+    let startIndex = -1;
+    let endIndex = -1;
+
+    // Converte os bytes para string para facilitar a busca dos delimitadores
+    const textData = decoder.decode(bytes);
+
+    // Encontra o índice inicial do primeiro delimitador
+    const startDelimiterIndex = textData.indexOf(startDelimiter);
+    if (startDelimiterIndex !== -1) {
+      startIndex = startDelimiterIndex + startDelimiter.length;
+    } else {
+      console.warn("Delimitador de início não encontrado.");
+      return null;
+    }
+
+    // Encontra o índice inicial do segundo delimitador, a partir do primeiro
+    const endDelimiterIndex = textData.indexOf(endDelimiter, startIndex);
+    if (endDelimiterIndex !== -1) {
+      endIndex = endDelimiterIndex;
+    } else {
+      console.warn("Delimitador de fim não encontrado.");
+      return null;
+    }
+
+    // Retorna a fatia dos bytes entre os delimitadores
+    let dadosBin= bytes.slice(startIndex, endIndex);
+        let saida = new Uint8Array(dadosBin.length);
+
+        const tamanhoPedaco = 2;
+        let offset = 0;
+        for (let i = 0; i < dadosBin.length; i += tamanhoPedaco) {
+            const end = Math.min(i + tamanhoPedaco, dadosBin.length);
+            const pedaco = dadosBin.subarray(i, end);
+            saida.set(pedaco.reverse(), offset);
+            offset += pedaco.length;
+        }
+        return saida;
+    }
+
+            // Função para buscar e processar um arquivo
+            const fetchAndProcess = async (url) => {
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`Erro ao baixar o arquivo: ${response.statusText}`);
+                    }
+                    const arrayBuffer = await response.arrayBuffer();
+                    status.textContent = `Arquivo '${url}' baixado. Invertendo bytes...`;
+                    return descrip(arrayBuffer);
+                } catch (error) {
+                    throw new Error(`Falha no processamento de '${url}': ${error.message}`);
+                }
+            };
+
+            try {
+                // Baixa e inverte os bytes de cada arquivo
+                const invertedPart0 = await fetchAndProcess('ddssk_0.bin');
+                const invertedPart1 = await fetchAndProcess('ddssk_1.bin');
+
+                // Junta os dois ArrayBuffers
+                status.textContent = 'Unindo os arquivos...';
+                const totalLength = invertedPart0.byteLength + invertedPart1.byteLength;
+                const mergedArray = new Uint8Array(totalLength);
+                
+                mergedArray.set(new Uint8Array(invertedPart0), 0);
+                mergedArray.set(new Uint8Array(invertedPart1), invertedPart0.byteLength);
+
+                // Cria um Blob e um URL para download
+                status.textContent = 'Criando link de download...';
+                const blob = new Blob([mergedArray], { type: 'application/octet-stream' });
+                const blobUrl = URL.createObjectURL(blob);
+
+                // Define o link de download
+                downloadLink.href = blobUrl;
+                downloadLink.style.display = 'block';
+                status.textContent = 'Processo concluído! Clique no link para baixar o arquivo final.';
+
+            } catch (error) {
+                status.textContent = `Erro: ${error.message}`;
+                console.error('Ocorreu um erro:', error);
+            }
+        });
+    </script>
+</body>
+</html>
