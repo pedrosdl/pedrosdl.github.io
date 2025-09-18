@@ -93,7 +93,7 @@
             });
 
             mediaSource.addEventListener('sourceended', () => {
-                //URL.revokeObjectURL(videoElement.src);
+                URL.revokeObjectURL(videoElement.src);
                 console.log('ObjectURL revogado.');
             });
 
@@ -182,5 +182,6 @@
 </body>
 
 </html>
+
 
 
