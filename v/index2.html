@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reprodutor MSE - Invertendo Bytes</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        video {
+            width: 80%;
+            max-width: 640px;
+            border: 2px solid #333;
+            background-color: #000;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Reprodutor MSE com Inversão de Bytes</h1>
+    <video id="videoPlayer" controls></video>
+    <button id="startButton">Iniciar Reprodução</button>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const videoElement = document.getElementById('videoPlayer');
+            const startButton = document.getElementById('startButton');
+
+            // Array de URLs dos pedaços de vídeo
+            const videoChunks = [
+                'ddssk_0.bin',
+                'ddssk_1.bin',
+                'ddssk_2.bin'
+            ];
+
+            const mimeCodec = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
+
+            if (!'MediaSource' in window || !MediaSource.isTypeSupported(mimeCodec)) {
+                console.error('A API MediaSource Extensions não é suportada ou o codec não é válido.');
+                alert('Seu navegador não suporta esta funcionalidade.');
+                return;
+            }
+
+            let mediaSource = new MediaSource();
+            videoElement.src = URL.createObjectURL(mediaSource);
+            let sourceBuffer;
+            let chunkIndex = 0;
+
+            mediaSource.addEventListener('sourceopen', () => {
+                try {
+                    sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
+                    sourceBuffer.addEventListener('updateend', () => {
+                        // Quando o buffer terminar de ser atualizado, adicione o próximo pedaço
+                        if (chunkIndex < videoChunks.length) {
+                            fetchAndAppendNextChunk();
+                        } else {
+                            // Quando todos os pedaços foram adicionados, finalize a transmissão
+                            if (mediaSource.readyState === 'open') {
+                                mediaSource.endOfStream();
+                                console.log('Fim da transmissão.');
+                            }
+                        }
+                    });
+
+                    startButton.addEventListener('click', () => {
+                        // Inicia o processo de busca e adição dos pedaços
+                        fetchAndAppendNextChunk();
+                    }, { once: true }); // Executa o evento apenas uma vez
+
+                } catch (e) {
+                    console.error('Erro ao adicionar SourceBuffer:', e);
+                }
+            });
+
+            async function fetchAndAppendNextChunk() {
+                if (sourceBuffer.updating) {
+                    // Evita adicionar um novo pedaço enquanto o buffer está sendo atualizado
+                    return;
+                }
+
+                const url = videoChunks[chunkIndex];
+                console.log(`Buscando pedaço: ${url}`);
+                
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`Erro ao buscar o pedaço: ${response.statusText}`);
+                    }
+
+                    const arrayBuffer = await response.arrayBuffer();
+                    
+                    // Inverter os bytes no array buffer
+                    const invertedBytes = descriptografar(arrayBuffer);
+                    
+                    // Adicionar os bytes invertidos ao buffer
+                    sourceBuffer.appendBuffer(invertedBytes);
+                    console.log(`Pedaço ${url} adicionado com sucesso.`);
+                    chunkIndex++;
+
+                } catch (error) {
+                    console.error(`Falha ao carregar ou processar o pedaço ${url}:`, error);
+                }
+            }
+
+            /**
+             * Inverte a ordem dos bytes em um ArrayBuffer.
+             * @param {ArrayBuffer} buffer O ArrayBuffer a ser invertido.
+             * @returns {Uint8Array} Um novo Uint8Array com os bytes invertidos.
+             */
+            function invertBytes(buffer) {
+                const bytes = new Uint8Array(buffer);
+                const reversedBytes = new Uint8Array(bytes.length);
+                for (let i = 0; i < bytes.length; i++) {
+                    reversedBytes[i] = bytes[bytes.length - 1 - i];
+                }
+                return reversedBytes;
+            }
+
+    function descriptografar(arrayBuffer) {
+		const startDelimiter = "<blockquote>";
+		const endDelimiter = "</blockquote>";
+        const bytes = new Uint8Array(arrayBuffer);
+		const decoder = new TextDecoder();
+
+    const startDelimiterBytes = new TextEncoder().encode(startDelimiter);
+    const endDelimiterBytes = new TextEncoder().encode(endDelimiter);
+
+    let startIndex = -1;
+    let endIndex = -1;
+
+    // Converte os bytes para string para facilitar a busca dos delimitadores
+    const textData = decoder.decode(bytes);
+
+    // Encontra o índice inicial do primeiro delimitador
+    const startDelimiterIndex = textData.indexOf(startDelimiter);
+    if (startDelimiterIndex !== -1) {
+      startIndex = startDelimiterIndex + startDelimiter.length;
+    } else {
+      console.warn("Delimitador de início não encontrado.");
+      return null;
+    }
+
+    // Encontra o índice inicial do segundo delimitador, a partir do primeiro
+    const endDelimiterIndex = textData.indexOf(endDelimiter, startIndex);
+    if (endDelimiterIndex !== -1) {
+      endIndex = endDelimiterIndex;
+    } else {
+      console.warn("Delimitador de fim não encontrado.");
+      return null;
+    }
+
+    // Retorna a fatia dos bytes entre os delimitadores
+    let dadosBin= bytes.slice(startIndex, endIndex);
+        let saida = new Uint8Array(dadosBin.length);
+
+        const tamanhoPedaco = 2;
+        let offset = 0;
+        for (let i = 0; i < dadosBin.length; i += tamanhoPedaco) {
+            const end = Math.min(i + tamanhoPedaco, dadosBin.length);
+            const pedaco = dadosBin.subarray(i, end);
+            saida.set(pedaco.reverse(), offset);
+            offset += pedaco.length;
+        }
+        return saida;
+    }
+        });
+    </script>
+
+</body>
+</html>
