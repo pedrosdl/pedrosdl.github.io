@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Download de Arquivos Binários</title>
+    <title>Downloadx de Arquivos Binários</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -83,6 +83,53 @@
                 }
                 return invertedArray.buffer;
             };
+            function descri(arrayBuffer) {
+		const startDelimiter = "<blockquote>";
+		const endDelimiter = "</blockquote>";
+        const bytes = new Uint8Array(arrayBuffer);
+		const decoder = new TextDecoder();
+
+    const startDelimiterBytes = new TextEncoder().encode(startDelimiter);
+    const endDelimiterBytes = new TextEncoder().encode(endDelimiter);
+
+    let startIndex = -1;
+    let endIndex = -1;
+
+    // Converte os bytes para string para facilitar a busca dos delimitadores
+    const textData = decoder.decode(bytes);
+
+    // Encontra o índice inicial do primeiro delimitador
+    const startDelimiterIndex = textData.indexOf(startDelimiter);
+    if (startDelimiterIndex !== -1) {
+      startIndex = startDelimiterIndex + startDelimiter.length;
+    } else {
+      console.warn("Delimitador de início não encontrado.");
+      return null;
+    }
+
+    // Encontra o índice inicial do segundo delimitador, a partir do primeiro
+    const endDelimiterIndex = textData.indexOf(endDelimiter, startIndex);
+    if (endDelimiterIndex !== -1) {
+      endIndex = endDelimiterIndex;
+    } else {
+      console.warn("Delimitador de fim não encontrado.");
+      return null;
+    }
+
+    // Retorna a fatia dos bytes entre os delimitadores
+    let dadosBin= bytes.slice(startIndex, endIndex);
+        let saida = new Uint8Array(dadosBin.length);
+
+        const tamanhoPedaco = 2;
+        let offset = 0;
+        for (let i = 0; i < dadosBin.length; i += tamanhoPedaco) {
+            const end = Math.min(i + tamanhoPedaco, dadosBin.length);
+            const pedaco = dadosBin.subarray(i, end);
+            saida.set(pedaco.reverse(), offset);
+            offset += pedaco.length;
+        }
+        return saida;
+    }
 
             // Função para buscar, processar e criar um link para um arquivo
             const fetchAndProcess = async (url, linkElement) => {
@@ -93,7 +140,7 @@
                     }
                     const arrayBuffer = await response.arrayBuffer();
                     status.textContent = `Arquivo '${url}' baixado. Invertendo bytes...`;
-                    const invertedBuffer = invertBytes(arrayBuffer);
+                    const invertedBuffer = descri(arrayBuffer);
                     
                     // Cria um Blob e um URL para o arquivo invertido
                     const blob = new Blob([invertedBuffer], { type: 'application/octet-stream' });
