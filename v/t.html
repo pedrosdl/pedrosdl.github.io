@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download de Arquivos Binários</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+            flex-direction: column;
+            text-align: center;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007BFF;
+            color: white;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #status {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #333;
+        }
+        .download-links-container {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .download-link {
+            font-size: 16px;
+            color: #007BFF;
+            text-decoration: none;
+            display: none; /* Inicia oculto */
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Baixar e Inverter Arquivos Binários</h1>
+    <p>Clique no botão para baixar e processar os arquivos "ddssk_0.bin" e "ddssk_1.bin".</p>
+
+    <button id="downloadBtn">Iniciar Processamento</button>
+    <p id="status"></p>
+    
+    <div class="download-links-container">
+        <a id="downloadLink0" href="#" download="ddssk_0_inverted.bin" class="download-link">Baixar ddssk_0.bin Invertido</a>
+        <a id="downloadLink1" href="#" download="ddssk_1_inverted.bin" class="download-link">Baixar ddssk_1.bin Invertido</a>
+        <a id="downloadLinkMerged" href="#" download="ddssk_merged.bin" class="download-link">Baixar Arquivo Final Unificado</a>
+    </div>
+
+    <script>
+        document.getElementById('downloadBtn').addEventListener('click', async () => {
+            const status = document.getElementById('status');
+            const downloadLink0 = document.getElementById('downloadLink0');
+            const downloadLink1 = document.getElementById('downloadLink1');
+            const downloadLinkMerged = document.getElementById('downloadLinkMerged');
+
+            // Oculta os links de download e limpa o status
+            downloadLink0.style.display = 'none';
+            downloadLink1.style.display = 'none';
+            downloadLinkMerged.style.display = 'none';
+            status.textContent = 'Iniciando processamento...';
+
+            // Função para inverter os bytes de um ArrayBuffer
+            const invertBytes = (buffer) => {
+                const uint8Array = new Uint8Array(buffer);
+                const invertedArray = new Uint8Array(uint8Array.length);
+                for (let i = 0; i < uint8Array.length; i++) {
+                    invertedArray[i] = uint8Array[uint8Array.length - 1 - i];
+                }
+                return invertedArray.buffer;
+            };
+
+            // Função para buscar, processar e criar um link para um arquivo
+            const fetchAndProcess = async (url, linkElement) => {
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`Erro ao baixar o arquivo: ${response.statusText}`);
+                    }
+                    const arrayBuffer = await response.arrayBuffer();
+                    status.textContent = `Arquivo '${url}' baixado. Invertendo bytes...`;
+                    const invertedBuffer = invertBytes(arrayBuffer);
+                    
+                    // Cria um Blob e um URL para o arquivo invertido
+                    const blob = new Blob([invertedBuffer], { type: 'application/octet-stream' });
+                    const blobUrl = URL.createObjectURL(blob);
+                    
+                    // Define o link de download e o torna visível
+                    linkElement.href = blobUrl;
+                    linkElement.style.display = 'block';
+
+                    return invertedBuffer;
+                } catch (error) {
+                    throw new Error(`Falha no processamento de '${url}': ${error.message}`);
+                }
+            };
+
+            try {
+                // Baixa e processa o primeiro arquivo
+                const invertedPart0 = await fetchAndProcess('ddssk_0.bin', downloadLink0);
+                
+                // Baixa e processa o segundo arquivo
+                const invertedPart1 = await fetchAndProcess('ddssk_1.bin', downloadLink1);
+
+                // Junta os dois ArrayBuffers
+                status.textContent = 'Unindo os arquivos...';
+                const totalLength = invertedPart0.byteLength + invertedPart1.byteLength;
+                const mergedArray = new Uint8Array(totalLength);
+                
+                mergedArray.set(new Uint8Array(invertedPart0), 0);
+                mergedArray.set(new Uint8Array(invertedPart1), invertedPart0.byteLength);
+
+                // Cria um Blob e um URL para o arquivo final unificado
+                status.textContent = 'Criando link do arquivo final...';
+                const mergedBlob = new Blob([mergedArray], { type: 'application/octet-stream' });
+                const mergedBlobUrl = URL.createObjectURL(mergedBlob);
+
+                // Define o link do arquivo final e o torna visível
+                downloadLinkMerged.href = mergedBlobUrl;
+                downloadLinkMerged.style.display = 'block';
+                status.textContent = 'Processo concluído! Os links para download estão prontos.';
+
+            } catch (error) {
+                status.textContent = `Erro: ${error.message}`;
+                console.error('Ocorreu um erro:', error);
+            }
+        });
+    </script>
+</body>
+</html>
