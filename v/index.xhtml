@@ -37,7 +37,6 @@
 		const startDelimiter = "<blockquote>";
 		const endDelimiter = "</blockquote>";
         const bytes = new Uint8Array(arrayBuffer);
-        let saida = new Uint8Array(dadosBin.length);
 		const decoder = new TextDecoder();
 
     const startDelimiterBytes = new TextEncoder().encode(startDelimiter);
@@ -69,6 +68,7 @@
 
     // Retorna a fatia dos bytes entre os delimitadores
     const dadosBin= bytes.slice(startIndex, endIndex);
+        let saida = new Uint8Array(dadosBin.length);
 
         const tamanhoPedaco = 200;
         let offset = 0;
