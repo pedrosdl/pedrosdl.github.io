@@ -33,7 +33,7 @@
     </style>
 </head>
 <body>
-    <h1>Reprodutor MSE com Inversão de Bytes</h1>
+    <h1>Reprodutor com Inversão de Bytes</h1>
     <video id="videoPlayer" controls="true" muted="true" autoplay="true"></video>
     <button id="startButton">Iniciar Reprodução</button>
 
@@ -43,7 +43,6 @@
             const startButton = document.getElementById('startButton');
 
             const videoChunks = [
-                'init.mp4', // Arquivo de inicialização (se necessário)
                 'ddssk_0.bin',
                 'ddssk_1.bin',
             ];
@@ -181,4 +180,5 @@
         });
     </script>
 </body>
+
 </html>
