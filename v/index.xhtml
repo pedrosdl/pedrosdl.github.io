@@ -148,14 +148,14 @@
             
             // Cria a promessa para esperar a operação de 'appendBuffer'
             await new Promise((resolve, reject) => {
-                sourceBuffer.addEventListener('updateend', function onUpdateEnd() {
-                    sourceBuffer.removeEventListener('updateend', onUpdateEnd);
+                //sourceBuffer.addEventListener('updateend', function onUpdateEnd() {
+                    //sourceBuffer.removeEventListener('updateend', onUpdateEnd);
                     resolve();
                 }, { once: true }); // A opção 'once' remove o listener automaticamente
                 
                 sourceBuffer.addEventListener('error', function onError() {
-                    sourceBuffer.removeEventListener('error', onError);
-                    reject(new Error('Erro no SourceBuffer durante a operação de append.'));
+                    //sourceBuffer.removeEventListener('error', onError);
+                    //reject(new Error('Erro no SourceBuffer durante a operação de append.'));
                 }, { once: true });
 
                 sourceBuffer.appendBuffer(nvDDs);
