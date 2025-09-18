@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="pt" lang="pt">
+<head>
+    <title>Reprodutor MSE de MPEG-TS</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+<body>
+
+    <video id="video" width="640" controls="controls"></video>
+    <br />
+    <button id="loadButton">Carregar e Reproduzir Vídeo</button>
+    <p>Status: <span id="status">Aguardando...</span></p>
+    
+    <script type="text/javascript">
+    //<![CDATA[
+    
+    const videoElement = document.getElementById('video');
+    const loadButton = document.getElementById('loadButton');
+    const statusElement = document.getElementById('status');
+    
+    const videoSegments = [];
+    for (let i = 0; i <= 188; i++) { 
+        videoSegments.push('dds_' + i + '.bin'); 
+    }
+    
+    let mediaSource = null;
+    let sourceBuffer = null;
+    let segmentIndex = 0;
+    
+    const bufferThreshold = 15;
+    let isFetching = false; // Flag para evitar múltiplas chamadas simultâneas
+
+    function descriptografar(arrayBuffer) {
+        const dadosBin = new Uint8Array(arrayBuffer);
+        let saida = new Uint8Array(dadosBin.length);
+        const tamanhoPedaco = 200;
+        let offset = 0;
+        for (let i = 0; i < dadosBin.length; i += tamanhoPedaco) {
+            const end = Math.min(i + tamanhoPedaco, dadosBin.length);
+            const pedaco = dadosBin.subarray(i, end);
+            saida.set(pedaco.reverse(), offset);
+            offset += pedaco.length;
+        }
+        return saida;
+    }
+
+    async function initMSE() {
+        statusElement.textContent = 'Iniciando o MediaSource...';
+        loadButton.disabled = true;
+
+        if (!('MediaSource' in window)) {
+            statusElement.textContent = 'Erro: MediaSource API não é suportada por este navegador.';
+            return;
+        }
+
+        mediaSource = new MediaSource();
+        videoElement.src = URL.createObjectURL(mediaSource);
+
+        mediaSource.addEventListener('sourceopen', handleSourceOpen);
+    }
+
+    async function handleSourceOpen() {
+        statusElement.textContent = 'MediaSource pronto. Criando SourceBuffer...';
+
+        const mimeCodec = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
+        
+        if (!MediaSource.isTypeSupported(mimeCodec)) {
+            statusElement.textContent = `Erro: O tipo de mídia "${mimeCodec}" não é suportado.`;
+            return;
+        }
+
+        sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
+        
+        videoElement.addEventListener('timeupdate', checkBuffer);
+        
+        // Inicia o carregamento do primeiro pedaço
+        loadNextSegment();
+    }
+
+    function checkBuffer() {
+        // Verifica se o buffer está cheio ou se já estamos carregando algo
+        if (sourceBuffer.updating || isFetching) {
+            return;
+        }
+
+        const bufferRanges = sourceBuffer.buffered;
+        if (bufferRanges.length > 0) {
+            const ultimoBufferEnd = bufferRanges.end(bufferRanges.length - 1);
+            const tempoFaltando = ultimoBufferEnd - videoElement.currentTime;
+
+            if (tempoFaltando < bufferThreshold && segmentIndex < videoSegments.length) {
+                loadNextSegment();
+            }
+        }
+    }
+
+    async function loadNextSegment() {
+        if (segmentIndex >= videoSegments.length || sourceBuffer.updating || isFetching) {
+            return;
+        }
+        
+        isFetching = true; // Define a flag para evitar outras chamadas
+        
+        const segmentUrl = videoSegments[segmentIndex];
+        statusElement.textContent = `Carregando segmento ${segmentIndex + 1}/${videoSegments.length}: ${segmentUrl}...`;
+        
+        try {
+            const response = await fetch(segmentUrl);
+            const arrayBuffer = await response.arrayBuffer();
+            const nvDDs = descriptografar(arrayBuffer);
+            
+            // Cria a promessa para esperar a operação de 'appendBuffer'
+            await new Promise((resolve, reject) => {
+                sourceBuffer.addEventListener('updateend', function onUpdateEnd() {
+                    sourceBuffer.removeEventListener('updateend', onUpdateEnd);
+                    resolve();
+                }, { once: true }); // A opção 'once' remove o listener automaticamente
+                
+                sourceBuffer.addEventListener('error', function onError() {
+                    sourceBuffer.removeEventListener('error', onError);
+                    reject(new Error('Erro no SourceBuffer durante a operação de append.'));
+                }, { once: true });
+
+                sourceBuffer.appendBuffer(nvDDs);
+            });
+            
+            segmentIndex++;
+            statusElement.textContent = `Segmento ${segmentIndex} carregado com sucesso.`;
+
+            if (segmentIndex === 1) {
+                videoElement.play();
+            }
+
+        } catch (error) {
+            statusElement.textContent = `Erro ao carregar o segmento ${segmentUrl}: ${error.message}`;
+            console.error('Fetch error:', error);
+        } finally {
+            isFetching = false; // Reseta a flag para permitir a próxima operação
+        }
+    }
+
+    loadButton.addEventListener('click', initMSE);
+
+    //]]>
+    </script>
+</body>
+</html>
