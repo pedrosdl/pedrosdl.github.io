@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reprodutor MSE - Invertendo Bytes e Download</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        video {
+            width: 80%;
+            max-width: 640px;
+            border: 2px solid #333;
+            background-color: #000;
+        }
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Reprodutor MSE com Inversão de Bytes</h1>
+    <video id="videoPlayer" controls></video>
+    
+    <div class="controls">
+        <button id="startButton">Iniciar Reprodução</button>
+        <button id="downloadButton" disabled>Baixar Arquivo Completo</button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const videoElement = document.getElementById('videoPlayer');
+            const startButton = document.getElementById('startButton');
+            const downloadButton = document.getElementById('downloadButton');
+
+            // Array de URLs dos pedaços de vídeo
+            const videoChunks = [
+                'parte_1.bin',
+                'parte_2.bin',
+                'parte_3.bin'
+            ];
+
+            const mimeCodec = 'video/mp4; codecs="avc1.42E01E, mp4a.40.2"';
+
+            if (!'MediaSource' in window || !MediaSource.isTypeSupported(mimeCodec)) {
+                console.error('A API MediaSource Extensions não é suportada ou o codec não é válido.');
+                alert('Seu navegador não suporta esta funcionalidade.');
+                return;
+            }
+
+            let mediaSource = new MediaSource();
+            videoElement.src = URL.createObjectURL(mediaSource);
+            let sourceBuffer;
+            let chunkIndex = 0;
+            const allChunks = []; // Armazena os dados brutos para o download
+
+            mediaSource.addEventListener('sourceopen', () => {
+                try {
+                    sourceBuffer = mediaSource.addSourceBuffer(mimeCodec);
+                    sourceBuffer.addEventListener('updateend', () => {
+                        if (chunkIndex < videoChunks.length) {
+                            fetchAndAppendNextChunk();
+                        } else {
+                            if (mediaSource.readyState === 'open') {
+                                mediaSource.endOfStream();
+                                console.log('Fim da transmissão.');
+                                // Habilita o botão de download quando a reprodução está pronta
+                                downloadButton.disabled = false;
+                            }
+                        }
+                    });
+
+                    startButton.addEventListener('click', () => {
+                        fetchAndAppendNextChunk();
+                    }, { once: true });
+
+                } catch (e) {
+                    console.error('Erro ao adicionar SourceBuffer:', e);
+                }
+            });
+
+            async function fetchAndAppendNextChunk() {
+                if (sourceBuffer.updating) {
+                    return;
+                }
+
+                const url = videoChunks[chunkIndex];
+                console.log(`Buscando pedaço: ${url}`);
+                
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        throw new Error(`Erro ao buscar o pedaço: ${response.statusText}`);
+                    }
+
+                    const arrayBuffer = await response.arrayBuffer();
+                    
+                    // Adiciona o pedaço original à lista de todos os chunks para o download futuro
+                    
+
+                    // Inverte os bytes para o reprodutor MSE
+                    const invertedBytes = descriptografar(arrayBuffer);
+                  allChunks.push(invertedBytes);
+                    
+                    sourceBuffer.appendBuffer(invertedBytes);
+                    console.log(`Pedaço ${url} adicionado com sucesso.`);
+                    chunkIndex++;
+
+                } catch (error) {
+                    console.error(`Falha ao carregar ou processar o pedaço ${url}:`, error);
+                }
+            }
+
+            /**
+             * Inverte a ordem dos bytes em um ArrayBuffer.
+             * @param {ArrayBuffer} buffer O ArrayBuffer a ser invertido.
+             * @returns {Uint8Array} Um novo Uint8Array com os bytes invertidos.
+             */
+            function invertBytes(buffer) {
+                const bytes = new Uint8Array(buffer);
+                const reversedBytes = new Uint8Array(bytes.length);
+                for (let i = 0; i < bytes.length; i++) {
+                    reversedBytes[i] = bytes[bytes.length - 1 - i];
+                }
+                return reversedBytes;
+            }
+          function descriptografar(arrayBuffer) {
+		const startDelimiter = "<blockquote>";
+		const endDelimiter = "</blockquote>";
+        const bytes = new Uint8Array(arrayBuffer);
+		const decoder = new TextDecoder();
+
+    const startDelimiterBytes = new TextEncoder().encode(startDelimiter);
+    const endDelimiterBytes = new TextEncoder().encode(endDelimiter);
+
+    let startIndex = -1;
+    let endIndex = -1;
+
+    // Converte os bytes para string para facilitar a busca dos delimitadores
+    const textData = decoder.decode(bytes);
+
+    // Encontra o índice inicial do primeiro delimitador
+    const startDelimiterIndex = textData.indexOf(startDelimiter);
+    if (startDelimiterIndex !== -1) {
+      startIndex = startDelimiterIndex + startDelimiter.length;
+    } else {
+      console.warn("Delimitador de início não encontrado.");
+      return null;
+    }
+
+    // Encontra o índice inicial do segundo delimitador, a partir do primeiro
+    const endDelimiterIndex = textData.indexOf(endDelimiter, startIndex);
+    if (endDelimiterIndex !== -1) {
+      endIndex = endDelimiterIndex;
+    } else {
+      console.warn("Delimitador de fim não encontrado.");
+      return null;
+    }
+
+    // Retorna a fatia dos bytes entre os delimitadores
+    let dadosBin= bytes.slice(startIndex, endIndex);
+        let saida = new Uint8Array(dadosBin.length);
+
+        const tamanhoPedaco = 2;
+        let offset = 0;
+        for (let i = 0; i < dadosBin.length; i += tamanhoPedaco) {
+            const end = Math.min(i + tamanhoPedaco, dadosBin.length);
+            const pedaco = dadosBin.subarray(i, end);
+            saida.set(pedaco.reverse(), offset);
+            offset += pedaco.length;
+        }
+        return saida;
+    }
+
+            downloadButton.addEventListener('click', () => {
+                if (allChunks.length === 0) {
+                    console.warn("Nenhum dado para baixar. Certifique-se de que a reprodução foi iniciada.");
+                    return;
+                }
+
+                console.log("Preparando arquivo para download...");
+                
+                // Concatena todos os ArrayBuffers em um único Blob
+                const combinedBlob = new Blob(allChunks, { type: 'video/mp4' });
+                
+                // Cria um URL para o Blob
+                const downloadUrl = URL.createObjectURL(combinedBlob);
+                
+                // Cria um link temporário para o download
+                const link = document.createElement('a');
+                link.href = downloadUrl;
+                link.download = 'video_completo.mp4';
+                
+                // Simula o clique no link para iniciar o download
+                document.body.appendChild(link);
+                link.click();
+                
+                // Limpa o link e o URL do Blob para liberar memória
+                document.body.removeChild(link);
+                URL.revokeObjectURL(downloadUrl);
+
+                console.log("Download iniciado!");
+            });
+        });
+    </script>
+
+</body>
+</html>
