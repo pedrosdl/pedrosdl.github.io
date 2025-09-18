@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extract Bytes from File</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        input, button {
+            padding: 8px;
+            font-size: 16px;
+        }
+        #output {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            min-height: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Extract Bytes from File</h1>
+        <input type="file" id="fileInput" accept=".bin">
+        <button onclick="extractBytes()">Extract Bytes</button>
+        <div id="output"></div>
+    </div>
+
+    <script>
+        async function extractBytes() {
+            const fileInput = document.getElementById('fileInput');
+            const outputDiv = document.getElementById('output');
+            const startDelimiter = '<blockquote>';
+            const endDelimiter = '</blockquote>';
+
+            // Check if a file is selected
+            if (!fileInput.files || fileInput.files.length === 0) {
+                outputDiv.textContent = 'Error: Please select a file.';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            
+            try {
+                // Read the entire file as text
+                const fileContents = await file.text();
+                
+                // Find the first occurrence of the start delimiter
+                const startPos = fileContents.indexOf(startDelimiter);
+                if (startPos === -1) {
+                    outputDiv.textContent = `Error: Start delimiter '${startDelimiter}' not found.`;
+                    return;
+                }
+
+                // Skip the delimiter to find the actual start of data
+                const startDataPos = startPos + startDelimiter.length;
+
+                // Find the end delimiter starting from the data position
+                const endPos = fileContents.indexOf(endDelimiter, startDataPos);
+                if (endPos === -1) {
+                    outputDiv.textContent = `Error: End delimiter '${endDelimiter}' not found.`;
+                    return;
+                }
+
+                // Extract the bytes between the delimiters
+                const extractedBytes = fileContents.slice(startDataPos, endPos);
+
+                // Create a Blob with the extracted data
+                const blob = new Blob([extractedBytes], { type: 'application/octet-stream' });
+                
+                // Create a download link for the extracted data
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'dados_extraidos.bin';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+
+                outputDiv.textContent = 'Data extracted successfully! The file "dados_extraidos.bin" has been downloaded.';
+            } catch (error) {
+                outputDiv.textContent = `Error: Failed to process the file. ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
